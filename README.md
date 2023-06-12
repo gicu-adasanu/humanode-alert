@@ -6,7 +6,7 @@
 --------------------------------------------------------------------------------
 ### Create directory: `mkdir /srv/humanode/`
 ### Go to directory: `cd /srv/humanode/`
-### Clone jar from git: `git clone --bracnh build https://github.com/gicu-adasanu/humanode-alert.git`
+### Clone jar from git: `git clone --branch build https://github.com/gicu-adasanu/humanode-alert.git`
 ### Edit application.properties and put your Telegram bot token: `bot.token=your_bot_token`
 ### For the first time the chat id will be 0. After you start the application you will send a message to your bot with the text `/register` which will allow you to store the id in the application properties in the future.
 
