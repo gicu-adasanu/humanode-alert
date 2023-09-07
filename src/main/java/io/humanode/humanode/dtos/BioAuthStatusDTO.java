@@ -1,4 +1,4 @@
-package io.humanode.humanodealert.dtos;
+package io.humanode.humanode.dtos;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

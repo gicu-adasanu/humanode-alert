@@ -1,14 +1,12 @@
-package io.humanode.humanodealert.humanode;
+package io.humanode.humanode.humanode;
 
-import io.humanode.humanodealert.bot.TelegramBot;
-import io.humanode.humanodealert.dtos.BioAuthStatusDTO;
-import io.humanode.humanodealert.exceptions.HumanodeException;
+import io.humanode.humanode.bot.JarvisTelegramBotAPI;
+import io.humanode.humanode.dtos.BioAuthStatusDTO;
+import io.humanode.humanode.exceptions.HumanodeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -18,17 +16,21 @@ import java.util.concurrent.TimeUnit;
 @Component
 @RequiredArgsConstructor
 public class HumanodeJob {
-    private static final String bioAuthBody = "{\n" +
-            "    \"jsonrpc\": \"2.0\",\n" +
-            "    \"id\": 1,\n" +
-            "    \"method\": \"bioauth_status\",\n" +
-            "    \"params\": []\n" +
-            "}";
-    private final TelegramBot telegramBot;
-    private final WebClient client = WebClient.create("http://localhost:9933");
+    private static final String bioAuthBody = """
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "bioauth_status",
+                "params": []
+            }""";
+
+    private final JarvisTelegramBotAPI jarvisTelegramBotAPI;
+    private final HumanodeFeignClient client;
 
     @Scheduled(cron = "0 */1 * * * *")
     public void checkHumanodeHealthAndBioAuth() {
+        log.info("Try to check Humanode health and bio auth");
+
         Date expiresAt = new Date(getBioAuthTime());
 
         Date now = new Date();
@@ -36,18 +38,22 @@ public class HumanodeJob {
         long remaining = expiresAt.getTime() - now.getTime();
 
         if (remaining <= 0) {
-            telegramBot.sendMessage("BioAuth has expired !!!");
+            log.info("BioAuth has expired");
+            jarvisTelegramBotAPI.sendMessage("BioAuth has expired");
         }
 
         long diffInMinutes = TimeUnit.MILLISECONDS.toMinutes(remaining);
 
         if (diffInMinutes <= 5) {
-            telegramBot.sendMessage(String.format("Your BioAuth will expire soon. You have %s minutes left", diffInMinutes));
+            log.info("Your BioAuth will expire soon. You have {} minutes left", diffInMinutes);
+            jarvisTelegramBotAPI.sendMessage(String.format("Your BioAuth will expire soon. You have %s minutes left", diffInMinutes));
         }
     }
 
     @Scheduled(cron = "0 0 */4 * * *")
     public void bioAuthInformation() {
+
+        log.info("Try to get bio auth information");
         Date expiresAt = new Date(getBioAuthTime());
 
         Date now = new Date();
@@ -60,44 +66,36 @@ public class HumanodeJob {
 
         String remainingTime = (hours.length() == 1 ? "0" + hours : hours) + "h : " + (minutes.length() == 1 ? "0" + minutes : minutes) + "m";
 
-        telegramBot.sendMessage(String.format("Next BioAuth on %s, remaining %s", expiresAt, remainingTime));
+        jarvisTelegramBotAPI.sendMessage(String.format("Next BioAuth on %s, remaining %s", expiresAt, remainingTime));
     }
 
     private Long getBioAuthTime() {
         try {
-            BioAuthStatusDTO response = client
-                    .post()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(bioAuthBody)
-                    .retrieve()
-                    .bodyToMono(BioAuthStatusDTO.class)
-                    .block();
+            BioAuthStatusDTO response = client.getBioAuthStatus(bioAuthBody);
 
             if (response == null || response.getResult() == null) {
-                telegramBot.sendMessage("Can't get expire time !!!");
+                jarvisTelegramBotAPI.sendMessage("Can't get expire time");
                 throw new HumanodeException("Can't get expire time");
             }
 
             if (response.getResult() instanceof String) {
-                telegramBot.sendMessage("BioAuth has expired !!!");
+                jarvisTelegramBotAPI.sendMessage("BioAuth has expired");
                 throw new HumanodeException("BioAuth has expired !!!");
-            } else if (response.getResult() instanceof LinkedHashMap<?, ?>) {
-                LinkedHashMap<String, LinkedHashMap<String, Long>> result = (LinkedHashMap<String, LinkedHashMap<String, Long>>) response.getResult();
+            } else {
+                if (response.getResult() instanceof LinkedHashMap<?, ?> result) {
 
-                if (result.size() > 0) {
-                    LinkedHashMap<String, Long> bioAuth = result.get("Active");
+                    if (!result.isEmpty() && result.get("Active") instanceof LinkedHashMap<?, ?> bioAuth) {
 
-                    if (bioAuth.size() > 0) {
-                        return bioAuth.get("expires_at");
+                        if (!bioAuth.isEmpty()) {
+                            return (Long) bioAuth.get("expires_at");
+                        }
                     }
                 }
-                throw generateExpireException();
-            } else {
                 throw generateExpireException();
             }
         } catch (Exception e) {
             if (!(e instanceof HumanodeException)) {
-                telegramBot.sendMessage("Humanode is down !!!");
+                jarvisTelegramBotAPI.sendMessage("Humanode is down");
                 throw new RuntimeException("Humanode is down", e);
             } else {
                 throw new RuntimeException(e);
@@ -106,7 +104,7 @@ public class HumanodeJob {
     }
 
     private Exception generateExpireException() {
-        telegramBot.sendMessage("Can't get expire time !!!");
+        jarvisTelegramBotAPI.sendMessage("Can't get expire time");
         throw new HumanodeException("Can't get expire time");
     }
 }

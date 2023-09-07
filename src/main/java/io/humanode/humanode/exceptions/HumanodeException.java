@@ -1,4 +1,4 @@
-package io.humanode.humanodealert.exceptions;
+package io.humanode.humanode.exceptions;
 
 public class HumanodeException extends RuntimeException {
     public HumanodeException() {

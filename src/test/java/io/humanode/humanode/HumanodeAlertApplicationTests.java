@@ -1,4 +1,4 @@
-package io.humanode.humanodealert;
+package io.humanode.humanode;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
