@@ -55,7 +55,7 @@ public class HumanodeJob {
         }
     }
 
-    @Scheduled(cron = "0 */1 * * * *")
+    @Scheduled(cron = "0 0 */4 * * *")
     public void bioAuthInformation() {
 
         log.info("Try to get bio auth information");
