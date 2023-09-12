@@ -5,6 +5,7 @@ import io.humanode.humanode.dtos.BioAuthStatusDTO;
 import io.humanode.humanode.exceptions.HumanodeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -33,6 +34,8 @@ public class HumanodeJob {
 
         Date expiresAt = new Date(getBioAuthTime());
 
+        log.info("Humanode is up and running");
+
         Date now = new Date();
 
         long remaining = expiresAt.getTime() - now.getTime();
@@ -46,11 +49,13 @@ public class HumanodeJob {
 
         if (diffInMinutes <= 5) {
             log.info("Your BioAuth will expire soon. You have {} minutes left", diffInMinutes);
-            jarvisTelegramBotAPI.sendMessage(String.format("Your BioAuth will expire soon. You have %s minutes left", diffInMinutes));
+            jarvisTelegramBotAPI.sendMessage(
+                    String.format("Your BioAuth will expire soon. You have %s minutes left", diffInMinutes)
+            );
         }
     }
 
-    @Scheduled(cron = "0 0 */4 * * *")
+    @Scheduled(cron = "0 */1 * * * *")
     public void bioAuthInformation() {
 
         log.info("Try to get bio auth information");
@@ -58,15 +63,26 @@ public class HumanodeJob {
 
         Date now = new Date();
 
+        String remainingTime = getString(expiresAt, now);
+
+        jarvisTelegramBotAPI.sendMessage(String.format("Next BioAuth on %s, remaining %s", expiresAt, remainingTime));
+        log.info("Next BioAuth on {}, remaining {}}", expiresAt, remainingTime);
+    }
+
+    @NotNull
+    private static String getString(Date expiresAt, Date now) {
         long remaining = expiresAt.getTime() - now.getTime();
 
         String hours = String.valueOf(TimeUnit.MILLISECONDS.toHours(remaining));
 
-        String minutes = String.valueOf(TimeUnit.MILLISECONDS.toMinutes(remaining - TimeUnit.MILLISECONDS.toHours(remaining) * 60 * 60 * 1000));
+        String minutes = String.valueOf(
+                TimeUnit.MILLISECONDS.toMinutes(
+                        remaining - TimeUnit.MILLISECONDS.toHours(remaining) * 60 * 60 * 1000
+                )
+        );
 
-        String remainingTime = (hours.length() == 1 ? "0" + hours : hours) + "h : " + (minutes.length() == 1 ? "0" + minutes : minutes) + "m";
-
-        jarvisTelegramBotAPI.sendMessage(String.format("Next BioAuth on %s, remaining %s", expiresAt, remainingTime));
+        return (hours.length() == 1 ? "0" + hours : hours) + "h : " + (minutes.length() == 1 ? "0" +
+                minutes : minutes) + "m";
     }
 
     private Long getBioAuthTime() {
