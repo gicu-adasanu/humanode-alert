@@ -1,22 +1,30 @@
 package io.humanode.humanode.humanode;
 
 import io.humanode.humanode.bot.JarvisTelegramBotAPI;
+import io.humanode.humanode.cache.StaticCache;
 import io.humanode.humanode.dtos.BioAuthStatusDTO;
 import io.humanode.humanode.exceptions.HumanodeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.Date;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class HumanodeJob {
+
     private static final String bioAuthBody = """
             {
                 "jsonrpc": "2.0",
@@ -24,65 +32,96 @@ public class HumanodeJob {
                 "method": "bioauth_status",
                 "params": []
             }""";
-
+    private final StaticCache staticCache;
     private final JarvisTelegramBotAPI jarvisTelegramBotAPI;
     private final HumanodeFeignClient client;
+    @Value("${humanode.path.auth.cmd}")
+    private String authCmd;
 
     @Scheduled(cron = "0 */1 * * * *")
     public void checkHumanodeHealthAndBioAuth() {
         log.info("Try to check Humanode health and bio auth");
 
-        Date expiresAt = new Date(getBioAuthTime());
+        LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                Instant.ofEpochSecond(getBioAuthTime() / 1000), staticCache.getTimeZoneId()
+        );
 
         log.info("Humanode is up and running");
 
-        Date now = new Date();
+        LocalDateTime now = LocalDateTime.now(staticCache.getTimeZoneId());
 
-        long remaining = expiresAt.getTime() - now.getTime();
+        long remaining = now.until(expiresAt, ChronoUnit.MINUTES);
 
         if (remaining <= 0) {
-            log.info("BioAuth has expired");
+            log.info("BioAuth has expired. " + getAuthUrl());
             jarvisTelegramBotAPI.sendMessage("BioAuth has expired");
         }
 
-        long diffInMinutes = TimeUnit.MILLISECONDS.toMinutes(remaining);
-
-        if (diffInMinutes <= 5) {
-            log.info("Your BioAuth will expire soon. You have {} minutes left", diffInMinutes);
+        if (remaining <= 5) {
+            log.info("Your BioAuth will expire soon. You have {} minutes left", remaining);
             jarvisTelegramBotAPI.sendMessage(
-                    String.format("Your BioAuth will expire soon. You have %s minutes left", diffInMinutes)
+                    String.format("Your BioAuth will expire soon. You have %s minutes left", remaining)
             );
         }
     }
 
-    @Scheduled(cron = "0 0 */4 * * *")
+    @Scheduled(cron = "0 0 12 * * *")
     public void bioAuthInformation() {
+        if (!staticCache.isEnableNotification()) {
+            return;
+        }
 
         log.info("Try to get bio auth information");
-        Date expiresAt = new Date(getBioAuthTime());
+        LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                Instant.ofEpochSecond(getBioAuthTime() / 1000), staticCache.getTimeZoneId()
+        );
 
-        Date now = new Date();
+        LocalDateTime now = LocalDateTime.now(staticCache.getTimeZoneId());
 
         String remainingTime = getString(expiresAt, now);
 
-        jarvisTelegramBotAPI.sendMessage(String.format("Next BioAuth on %s, remaining %s", expiresAt, remainingTime));
+        jarvisTelegramBotAPI.sendMessage(
+                String.format(
+                        "Next BioAuth on %s, remaining %s", expiresAt.format(
+                                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                        ),
+                        remainingTime
+                )
+        );
         log.info("Next BioAuth on {}, remaining {}}", expiresAt, remainingTime);
     }
 
+    private String getAuthUrl() {
+        System.out.println(authCmd);
+        ProcessBuilder processBuilder = new ProcessBuilder();
+        processBuilder.command("/bin/sh", "-c", authCmd);
+        System.out.println(authCmd);
+        try {
+            Process process = processBuilder.start();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            StringBuilder output = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                log.info(line);
+                output.append(line);
+            }
+
+            process.waitFor();
+            return output.toString();
+        } catch (IOException | InterruptedException e) {
+            log.error(e.getMessage());
+            return "Can't get url for authentication, check logs and path in application.properties";
+        }
+    }
+
     @NotNull
-    private static String getString(Date expiresAt, Date now) {
-        long remaining = expiresAt.getTime() - now.getTime();
+    private String getString(LocalDateTime expiresAt, LocalDateTime now) {
+        long days = now.until(expiresAt, ChronoUnit.DAYS);
+        long hours = now.until(expiresAt.minusDays(days), ChronoUnit.HOURS);
+        long min = now.until(expiresAt.minusDays(days).minusHours(hours), ChronoUnit.MINUTES);
+        long sec = now.until(expiresAt.minusDays(days).minusHours(hours).minusMinutes(min), ChronoUnit.SECONDS);
 
-        String hours = String.valueOf(TimeUnit.MILLISECONDS.toHours(remaining));
-
-        String minutes = String.valueOf(
-                TimeUnit.MILLISECONDS.toMinutes(
-                        remaining - TimeUnit.MILLISECONDS.toHours(remaining) * 60 * 60 * 1000
-                )
-        );
-
-        return (hours.length() == 1 ? "0" + hours : hours) + "h : " + (minutes.length() == 1 ? "0" +
-                minutes : minutes) + "m";
+        return String.format("%sd and %sh:%sm:%ss", days, hours, min, sec);
     }
 
     private Long getBioAuthTime() {

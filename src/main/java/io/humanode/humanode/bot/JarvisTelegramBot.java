@@ -6,7 +6,7 @@ import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
-import io.humanode.humanode.cache.FileBasedCache;
+import io.humanode.humanode.cache.StaticCache;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.time.ZoneId;
 
 import static io.humanode.humanode.utils.HumanUtils.*;
 
@@ -21,9 +22,9 @@ import static io.humanode.humanode.utils.HumanUtils.*;
 @Component
 @RequiredArgsConstructor
 public class JarvisTelegramBot implements JarvisTelegramBotAPI {
-    private static final String CHAT_ID_KEY = "CHAT_ID_KEY";
     private static TelegramBot bot = null;
-    private final FileBasedCache fileBasedCache;
+    private final StaticCache staticCache;
+
     @Value("${bot.token}")
     private String token;
 
@@ -33,14 +34,14 @@ public class JarvisTelegramBot implements JarvisTelegramBotAPI {
 
         bot.setUpdatesListener(updates -> {
             log.info("Received updates from bot {}", updates);
-            for (Update u : updates) {
-                if (isRegisterCommand(u)) {
-                    fileBasedCache.put(CHAT_ID_KEY, u.message().chat().id());
-                    sendMessage(SUCCESSFULLY_REGISTERED_MESSAGE);
-                } else {
-                    sendMessage(UNKNOWN_COMMAND);
+            try {
+                for (Update u : updates) {
+                    executeCommand(u);
                 }
+            } catch (Exception e) {
+                log.error(e.getMessage());
             }
+
             return UpdatesListener.CONFIRMED_UPDATES_ALL;
         }, e -> {
             if (e.response() != null) {
@@ -60,7 +61,7 @@ public class JarvisTelegramBot implements JarvisTelegramBotAPI {
             throw new RuntimeException("The telegram bot is not initialized");
         }
 
-        Long id = (Long) fileBasedCache.get(CHAT_ID_KEY);
+        Long id = staticCache.getChatId();
 
         if (id == null) {
             log.warn(MISSING_CHAT_ID);
@@ -82,7 +83,45 @@ public class JarvisTelegramBot implements JarvisTelegramBotAPI {
         });
     }
 
-    private boolean isRegisterCommand(Update update) {
-        return update.message() != null && update.message().text().equals("/register");
+    private void executeCommand(Update u) {
+        String[] args = u.message().text().split(" ");
+        String cmd = args[0];
+
+        switch (cmd) {
+            case "/register" -> {
+                staticCache.setChatId(u.message().chat().id());
+                sendMessage(SUCCESSFULLY_REGISTERED_MESSAGE);
+            }
+            case "/timezone" -> {
+                if (args.length > 1 && isValidTimeZoneId(args[1])) {
+                    staticCache.setTimeZoneId(args[1]);
+                    sendMessage(SUCCESSFULLY_REGISTERED_TIME_ZONE_ID);
+                } else {
+                    sendMessage("Invalid timezone, example: '/timezone Europe/Chisinau'");
+                }
+            }
+            case "/enable_notification" -> {
+                staticCache.enable();
+                sendMessage(ENABLE_NOTIF);
+            }
+            case "/disable_notification" -> {
+                staticCache.disable();
+                sendMessage(DISABLED_NOTIF);
+            }
+            case "/help" -> {
+                sendMessage(HELP);
+            }
+            default -> sendMessage(UNKNOWN_COMMAND);
+        }
+    }
+
+    private boolean isValidTimeZoneId(String timeZoneId) {
+        try {
+            ZoneId z = ZoneId.of(timeZoneId);
+            log.info("Time zone is valid {}", z);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
