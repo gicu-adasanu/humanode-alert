@@ -15,6 +15,7 @@ you are not registered.
 - [Update application](#update-application)
 - [Register to receive alerts](#register-to-receive-alerts)
 - [Help](#help)
+- [List of all time zones](#list-of-all-time-zones)
 
 ### Create new bot
 
@@ -106,3 +107,7 @@ List of commands:
 - `/enable_notification`
 - `/disable_notification`
 - `/help`
+
+### List of all time zones
+
+[List of all time zones](https://garygregory.wordpress.com/2013/06/18/what-are-the-java-timezone-ids/)
