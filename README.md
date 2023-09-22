@@ -12,6 +12,7 @@ you are not registered.
 - [Create new bot](#create-new-bot)
 - [Configuration](#configuration)
 - [Run application in screen](#run-application-in-screen)
+- [Update application](#update-application)
 - [Register to receive alerts](#register-to-receive-alerts)
 - [Help](#help)
 
@@ -57,6 +58,28 @@ Create new screen: `screen -S humanode-alert`
 Run application: `java -Dspring.config.location=/srv/humanode/humanode-alert/application.properties -jar humanode-alert-1.0.0.jar`
 
 Exit from screen: `CTRL+A+D`
+
+--------------------------------------------------------------------------------
+
+### Update application
+
+Resume screen: `screen -r humanode-alert`
+
+Stop application: `CTRL+C`
+
+Stash changes: `git stash`
+
+Update targets: `git pull`
+
+Check application properties if bot token is present
+
+Run application: `java -Dspring.config.location=/srv/humanode/humanode-alert/application.properties -jar humanode-alert-1.0.0.jar`
+
+Exit from screen: `CTRL+A+D`
+
+Send again register command in telegram chat with bot `/register`
+
+To view all commands type `/help`
 
 --------------------------------------------------------------------------------
 
