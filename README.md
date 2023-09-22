@@ -1,3 +1,7 @@
+## IMPORTANT 
+### The application must be started on the same machine as the humanode.
+### If you have this warn in console: `Chat id not found, need to register, to register type /register in chat with bot`, you are not registered.
+
 ## Create a new bot
 
 --------------------------------------------------------------------------------
@@ -39,8 +43,3 @@
 --------------------------------------------------------------------------------
 ## HELP
 ### Resume screen: `screen -r humanode-alert`
-
---------------------------------------------------------------------------------
-## IMPORTANT 
-### The application must be started on the same machine as the humanode.
-### If you have this warn in console: `Chat id not found, need to register, to register type /register in chat with bot`, you are not registered.
