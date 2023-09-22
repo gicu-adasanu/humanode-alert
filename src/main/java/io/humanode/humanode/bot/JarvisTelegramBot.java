@@ -108,9 +108,7 @@ public class JarvisTelegramBot implements JarvisTelegramBotAPI {
                 staticCache.disable();
                 sendMessage(DISABLED_NOTIF);
             }
-            case "/help" -> {
-                sendMessage(HELP);
-            }
+            case "/help" -> sendMessage(HELP);
             default -> sendMessage(UNKNOWN_COMMAND);
         }
     }
