@@ -53,8 +53,9 @@ public class HumanodeJob {
         long remaining = now.until(expiresAt, ChronoUnit.MINUTES);
 
         if (remaining <= 0) {
-            log.info("BioAuth has expired. " + getAuthUrl());
-            jarvisTelegramBotAPI.sendMessage("BioAuth has expired");
+            String url = getAuthUrl();
+            log.info("BioAuth has expired. " + url);
+            jarvisTelegramBotAPI.sendMessage("BioAuth has expired. " + url);
         }
 
         if (remaining <= 5) {
