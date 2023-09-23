@@ -87,10 +87,8 @@ public class HumanodeJob {
     }
 
     private String getAuthUrl() {
-        System.out.println(authCmd);
         ProcessBuilder processBuilder = new ProcessBuilder();
         processBuilder.command("/bin/sh", "-c", authCmd);
-        System.out.println(authCmd);
         try {
             Process process = processBuilder.start();
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
