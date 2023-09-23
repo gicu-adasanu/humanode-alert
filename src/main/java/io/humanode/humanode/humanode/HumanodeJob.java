@@ -127,10 +127,10 @@ public class HumanodeJob {
             }
 
             if (response.getResult() instanceof String) {
-                String url = getAuthUrl();
-                log.info("BioAuth has expired. " + url);
-                jarvisTelegramBotAPI.sendMessage("BioAuth has expired. " + url);
-                throw new HumanodeException("BioAuth has expired. " + url);
+                log.info("BioAuth has expired");
+                jarvisTelegramBotAPI.sendMessage("BioAuth has expired");
+                jarvisTelegramBotAPI.sendMessage(getAuthUrl());
+                throw new HumanodeException("BioAuth has expired.");
             } else {
                 if (response.getResult() instanceof LinkedHashMap<?, ?> result) {
 
