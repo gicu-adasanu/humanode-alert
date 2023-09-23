@@ -37,6 +37,8 @@ public class HumanodeJob {
     private final HumanodeFeignClient client;
     @Value("${humanode.path.auth.cmd}")
     private String authCmd;
+    @Value("${humanode.path.tunnel.cmd}")
+    private String tunnelCmd;
 
     @Scheduled(cron = "0 */1 * * * *")
     public void checkHumanodeHealthAndBioAuth() {
@@ -87,6 +89,7 @@ public class HumanodeJob {
     }
 
     private String getAuthUrl() {
+        new Thread(this::openTunnel).start();
         ProcessBuilder processBuilder = new ProcessBuilder();
         processBuilder.command("/bin/sh", "-c", authCmd);
         try {
@@ -104,6 +107,18 @@ public class HumanodeJob {
         } catch (IOException | InterruptedException e) {
             log.error(e.getMessage());
             return "Can't get url for authentication, check logs and path in application.properties";
+        }
+    }
+
+    private void openTunnel() {
+        log.info("Try to open tunnel");
+        ProcessBuilder processBuilder = new ProcessBuilder();
+        processBuilder.command("/bin/sh", "-c", tunnelCmd);
+        try {
+            Process process = processBuilder.start();
+            process.waitFor();
+        } catch (IOException | InterruptedException e) {
+            log.error(e.getMessage());
         }
     }
 
