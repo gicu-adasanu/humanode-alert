@@ -11,6 +11,7 @@ import io.humanode.humanode.utils.CustomSpringEvent;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -25,7 +26,8 @@ import static io.humanode.humanode.utils.HumanUtils.*;
 @RequiredArgsConstructor
 public class JarvisTelegramBot implements JarvisTelegramBotAPI {
     private static TelegramBot bot = null;
-    private static ApplicationEventPublisher applicationEventPublisher;
+    @Autowired
+    private ApplicationEventPublisher applicationEventPublisher;
     private final StaticCache staticCache;
     @Value("${bot.token}")
     private String token;
