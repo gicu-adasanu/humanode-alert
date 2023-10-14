@@ -7,10 +7,12 @@ import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
 import io.humanode.humanode.cache.StaticCache;
+import io.humanode.humanode.utils.CustomSpringEvent;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -23,8 +25,8 @@ import static io.humanode.humanode.utils.HumanUtils.*;
 @RequiredArgsConstructor
 public class JarvisTelegramBot implements JarvisTelegramBotAPI {
     private static TelegramBot bot = null;
+    private static ApplicationEventPublisher applicationEventPublisher;
     private final StaticCache staticCache;
-
     @Value("${bot.token}")
     private String token;
 
@@ -107,6 +109,9 @@ public class JarvisTelegramBot implements JarvisTelegramBotAPI {
             case "/disable_notification" -> {
                 staticCache.disable();
                 sendMessage(DISABLED_NOTIF);
+            }
+            case "/get_bioauth_link" -> {
+               applicationEventPublisher.publishEvent(new CustomSpringEvent(this, "get_bioauth_link"));
             }
             case "/help" -> sendMessage(HELP);
             default -> sendMessage(UNKNOWN_COMMAND);

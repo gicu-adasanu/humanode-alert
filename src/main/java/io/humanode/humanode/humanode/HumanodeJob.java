@@ -4,10 +4,12 @@ import io.humanode.humanode.bot.JarvisTelegramBotAPI;
 import io.humanode.humanode.cache.StaticCache;
 import io.humanode.humanode.dtos.BioAuthStatusDTO;
 import io.humanode.humanode.exceptions.HumanodeException;
+import io.humanode.humanode.utils.CustomSpringEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +25,7 @@ import java.util.LinkedHashMap;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class HumanodeJob {
+public class HumanodeJob implements ApplicationListener<CustomSpringEvent> {
 
     private static final String bioAuthBody = """
             {
@@ -39,6 +41,7 @@ public class HumanodeJob {
     private String authCmd;
     @Value("${humanode.path.tunnel.cmd}")
     private String tunnelCmd;
+    private static String url = null;
 
     @Scheduled(cron = "0 */1 * * * *")
     public void checkHumanodeHealthAndBioAuth() {
@@ -53,6 +56,10 @@ public class HumanodeJob {
         LocalDateTime now = LocalDateTime.now(staticCache.getTimeZoneId());
 
         long remaining = now.until(expiresAt, ChronoUnit.MINUTES);
+
+        if (remaining > 1) {
+            url = null;
+        }
 
         if (remaining <= 5) {
             log.info("Your BioAuth will expire soon. You have {} minutes left", remaining);
@@ -89,6 +96,9 @@ public class HumanodeJob {
     }
 
     private String getAuthUrl() {
+        if (url != null) {
+            return url;
+        }
         new Thread(this::openTunnel).start();
         ProcessBuilder processBuilder = new ProcessBuilder();
         processBuilder.command("/bin/sh", "-c", authCmd);
@@ -103,7 +113,8 @@ public class HumanodeJob {
             }
 
             process.waitFor();
-            return output.toString();
+            url = output.toString();
+            return url;
         } catch (IOException | InterruptedException e) {
             log.error(e.getMessage());
             return "Can't get url for authentication, check logs and path in application.properties";
@@ -171,5 +182,13 @@ public class HumanodeJob {
     private Exception generateExpireException() {
         jarvisTelegramBotAPI.sendMessage("Can't get expire time");
         throw new HumanodeException("Can't get expire time");
+    }
+
+    @Override
+    public void onApplicationEvent(CustomSpringEvent event) {
+        if (event.getMessage().equals("get_bioauth_link")) {
+            url = null;
+            jarvisTelegramBotAPI.sendMessage(getAuthUrl());
+        }
     }
 }

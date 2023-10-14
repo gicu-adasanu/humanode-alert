@@ -13,6 +13,7 @@ public class HumanUtils {
 /timezone -> set timezone, example '/timezone Europe/Chisinau'
 /enable_notification -> enable notification about node every day at noon
 /disable_notification -> disable notification about node every day at noon
+/get_bioauth_link -> get new auth link
 /help -> list of commands
             """;
 }
