@@ -106,6 +106,7 @@ List of commands:
 - `/timezone {time_zone_id}`
 - `/enable_notification`
 - `/disable_notification`
+- `/get_bioauth_link`
 - `/help`
 
 ### List of all time zones
