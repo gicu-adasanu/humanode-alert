@@ -2,7 +2,7 @@
 
 ## IMPORTANT
 
-The application must be started on the same machine as the humanode.
+The application must be started on the same machine as the humanode, and started with the same user.
 
 If you have this warn in console: `Chat id not found, need to register, to register type /register in chat with bot`,
 you are not registered.
